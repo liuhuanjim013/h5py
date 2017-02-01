@@ -290,16 +290,21 @@ class File(Group):
             id_list = [x for x in id_list if h5i.get_file_id(x).id == self.id.id]
             file_list = [x for x in file_list if h5i.get_file_id(x).id == self.id.id]
 
+            hasError = False  # whether dec_ref has error
             for id_ in id_list:
-                while id_.valid:
-                    h5i.dec_ref(id_)
+                while not hasError and id_.valid:
+                    ret = h5i.dec_ref(id_)
+                    if ret is None or ret < 0:
+                        hasError = True
 
             for id_ in file_list:
-                while id_.valid:
-                    h5i.dec_ref(id_)
-
-            self.id.close()
-            _objects.nonlocal_close()
+                while not hasError and id_.valid:
+                    ret = h5i.dec_ref(id_)
+                    if ret is None or ret < 0:
+                        hasError = True
+            if not hasError: # if an error has happened during dec_ref(), then the H5F object would be reset and H5F_close would access invalid memory, so we do not want to proceed here
+                self.id.close()
+                _objects.nonlocal_close()
 
     def flush(self):
         """ Tell the HDF5 library to flush its buffers.
